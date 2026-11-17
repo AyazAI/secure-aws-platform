@@ -1,0 +1,33 @@
+# Copy to demo.auto.tfvars (gitignored) only for a manual plan in your own account.
+# Do not apply this file as-is. Replace alert_email first.
+# The figures in the README price this shape in us-east-1.
+
+aws_region                   = "us-east-1"
+name_prefix                  = "sapdemo"
+environment                  = "demo"
+vpc_cidr                     = "10.40.0.0/16"
+availability_zones           = ["us-east-1a", "us-east-1b"]
+single_nat_gateway           = true
+container_image              = "public.ecr.aws/nginx/nginx:1.27-alpine"
+container_port               = 80
+health_check_path            = "/"
+container_user               = ""
+readonly_root_filesystem     = false
+ecs_cpu                      = 256
+ecs_memory                   = 512
+cpu_architecture             = "ARM64"
+ecs_desired_count            = 1
+log_retention_days           = 365
+log_expiration_days          = 90
+enable_deletion_protection   = false
+force_destroy_buckets        = true
+acm_certificate_arn          = ""
+budget_limit_usd             = "100"
+alert_email                  = "budget-alerts@example.com"
+
+# After you build sample-app and push it to the ECR output:
+# container_image          = "<repository url from terraform output>:1.0.0"
+# container_port           = 8080
+# health_check_path        = "/healthz"
+# container_user           = "101"
+# readonly_root_filesystem = true
