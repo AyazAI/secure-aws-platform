@@ -1,0 +1,105 @@
+name: Terraform plan or apply
+
+# Manual only. Pull requests and pushes do not run this workflow.
+# Do not dispatch it until:
+#   1. A GitHub Environment named aws-deploy exists, with a reviewer if you want a gate.
+#   2. Repository variable AWS_DEPLOY_ROLE_ARN is the IAM role GitHub may assume.
+#   3. Repository variable AWS_REGION is the region, for example us-east-1.
+#   4. For apply, terraform/backend.tf exists, copied from backend.tf.example,
+#      and the state bucket is encrypted. This file must not be committed.
+# The role trust policy should allow token.actions.githubusercontent.com
+# to assume it only for repo:AyazAI/secure-aws-platform.
+# This repository has not been dispatched.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: plan or apply
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+      var_file:
+        description: Example variable file to copy into a gitignored auto tfvars file
+        required: true
+        type: choice
+        default: environments/demo.tfvars.example
+        options:
+          - environments/demo.tfvars.example
+          - environments/production.tfvars.example
+      alert_email:
+        description: Inbox for budget and alarm mail. Do not use example.com.
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-deploy
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    environment: aws-deploy
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Refuse apply without a remote backend file
+        if: inputs.action == 'apply'
+        working-directory: terraform
+        run: |
+          if [ ! -f backend.tf ] || ! grep -q 'backend "s3"' backend.tf; then
+            echo "Refusing apply. Copy backend.tf.example to backend.tf and replace the placeholders first."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: secure-aws-platform-${{ github.run_id }}
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+
+      - name: Copy example variables
+        working-directory: .
+        env:
+          ALERT_EMAIL: ${{ inputs.alert_email }}
+          VAR_FILE: ${{ inputs.var_file }}
+        run: |
+          python3 - << 'PY'
+          import os
+          import pathlib
+          import re
+
+          email = os.environ["ALERT_EMAIL"]
+          if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email) or email.endswith("@example.com"):
+              raise SystemExit("alert_email must be a deliverable address. example.com is rejected.")
+          text = pathlib.Path(os.environ["VAR_FILE"]).read_text().replace("budget-alerts@example.com", email)
+          pathlib.Path("terraform/ci.auto.tfvars").write_text(text)
+          PY
+
+      - name: terraform init
+        run: terraform init -input=false
+
+      - name: terraform plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: terraform apply
+        if: inputs.action == 'apply'
+        run: terraform apply -input=false tfplan

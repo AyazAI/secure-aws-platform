@@ -1,0 +1,75 @@
+name: Terraform static checks
+
+# Static analysis only. This workflow does not authenticate to AWS and does
+# not run terraform plan or terraform apply.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-analysis:
+    name: fmt, validate, tflint, checkov, tfsec, gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive -diff
+
+      - name: terraform init
+        working-directory: terraform
+        run: terraform init -backend=false -input=false
+
+      - name: terraform validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Install tflint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.66.0
+
+      - name: tflint init
+        working-directory: terraform
+        run: tflint --init
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: tflint
+        working-directory: terraform
+        run: tflint
+
+      - name: checkov
+        run: |
+          pip install --disable-pip-version-check 'checkov==3.4.5'
+          checkov -d terraform --framework terraform --download-external-modules false --quiet --compact
+          checkov -d sample-app --framework dockerfile --quiet --compact
+
+      - name: tfsec
+        run: |
+          curl -fsSL -o /tmp/tfsec.tar.gz https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec_1.28.14_linux_amd64.tar.gz
+          tar -C /tmp -xzf /tmp/tfsec.tar.gz tfsec
+          /tmp/tfsec terraform --no-color
+
+      - name: gitleaks
+        run: |
+          curl -fsSL -o /tmp/gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          tar -C /tmp -xzf /tmp/gitleaks.tar.gz gitleaks
+          /tmp/gitleaks detect --source . --redact --no-banner
