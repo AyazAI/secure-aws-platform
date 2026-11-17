@@ -74,14 +74,16 @@ digraph secure_aws_platform {
 def main() -> None:
     if shutil.which("dot") is None:
         raise SystemExit("graphviz dot is not installed")
-    out = Path(__file__).with_name("architecture.png")
-    subprocess.run(
-        ["dot", "-Tpng", "-o", str(out)],
-        input=DOT,
-        text=True,
-        check=True,
-    )
-    print(out)
+    here = Path(__file__).parent
+    for kind, name in (("png", "architecture.png"), ("svg", "architecture.svg")):
+        out = here / name
+        subprocess.run(
+            ["dot", f"-T{kind}", "-o", str(out)],
+            input=DOT,
+            text=True,
+            check=True,
+        )
+        print(out)
 
 
 if __name__ == "__main__":
