@@ -3,11 +3,13 @@ name: Terraform static checks
 # Static analysis only. This workflow does not authenticate to AWS and does
 # not run terraform plan or terraform apply.
 
-on:
+# `push` is not limited to main. A workflow file that is not on the default
+# branch is not started by pull_request until that file is on the default
+# branch. A push to the branch that contains this file does start it.
+# See https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#push
+"on":
   pull_request:
   push:
-    branches:
-      - main
 
 permissions:
   contents: read
