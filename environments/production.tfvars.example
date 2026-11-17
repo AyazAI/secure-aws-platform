@@ -1,0 +1,26 @@
+# A larger shape for review. It is not a claim that this stack is running.
+# Two tasks and one NAT gateway per availability zone. The README prices this
+# shape separately from the demo. Replace alert_email before any real apply.
+
+aws_region                   = "us-east-1"
+name_prefix                  = "sapprod"
+environment                  = "production"
+vpc_cidr                     = "10.40.0.0/16"
+availability_zones           = ["us-east-1a", "us-east-1b"]
+single_nat_gateway           = false
+container_image              = "public.ecr.aws/nginx/nginx:1.27-alpine"
+container_port               = 80
+health_check_path            = "/"
+container_user               = ""
+readonly_root_filesystem     = false
+ecs_cpu                      = 512
+ecs_memory                   = 1024
+cpu_architecture             = "ARM64"
+ecs_desired_count            = 2
+log_retention_days           = 365
+log_expiration_days          = 365
+enable_deletion_protection   = true
+force_destroy_buckets        = false
+acm_certificate_arn          = ""
+budget_limit_usd             = "250"
+alert_email                  = "budget-alerts@example.com"

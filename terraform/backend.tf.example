@@ -1,0 +1,14 @@
+# Example only. Do not rename this file to backend.tf until the bucket and
+# lock table exist. Terraform will not create the bucket it stores state in.
+# Replace every REPLACE_ME value. Do not commit the filled-in backend.tf.
+#
+# terraform {
+#   backend "s3" {
+#     bucket         = "REPLACE_ME"
+#     key            = "secure-aws-platform/terraform.tfstate"
+#     region         = "us-east-1"
+#     encrypt        = true
+#     kms_key_id     = "REPLACE_ME"
+#     dynamodb_table = "REPLACE_ME"
+#   }
+# }
